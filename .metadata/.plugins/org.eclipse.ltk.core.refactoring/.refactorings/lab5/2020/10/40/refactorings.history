@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;lab5/src/autotest(5).o&apos; to &apos;autotest.o&apos;" description="Rename resource &apos;autotest(5).o&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src/autotest(5).o" name="autotest.o" stamp="1601761781231" updateReferences="true"/>
+</session>

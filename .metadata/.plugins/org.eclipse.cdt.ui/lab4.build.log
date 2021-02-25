@@ -1,0 +1,20 @@
+14:45:37 **** Build of configuration Debug for project lab4 ****
+make -j12 all 
+Building file: ../src/test.s
+Invoking: MCU GCC Assembler
+C:\Users\pengy\workspace\lab4\Debug
+arm-none-eabi-as -mcpu=cortex-m0 -mthumb -mfloat-abi=soft -I"C:/Users/pengy/workspace/lab4/StdPeriph_Driver/inc" -I"C:/Users/pengy/workspace/lab4/inc" -I"C:/Users/pengy/workspace/lab4/CMSIS/device" -I"C:/Users/pengy/workspace/lab4/CMSIS/core" -g -o "src/test.o" "../src/test.s"
+../src/test.s: Assembler messages:
+../src/test.s:5: Error: instruction not supported in Thumb16 mode -- `orrs r1,r2'
+../src/test.s:15: Error: instruction not supported in Thumb16 mode -- `bics r1,r2'
+../src/test.s:18: Error: instruction not supported in Thumb16 mode -- `orrs r1,r2'
+../src/test.s:27: Error: instruction not supported in Thumb16 mode -- `bics r1,r2'
+../src/test.s:30: Error: instruction not supported in Thumb16 mode -- `orrs r1,r2'
+../src/test.s:39: Error: instruction not supported in Thumb16 mode -- `orrs r1,r2'
+../src/test.s:48: Error: instruction not supported in Thumb16 mode -- `orrs r1,r2'
+../src/test.s:54: Error: syntax error -- `ldr r2,=1<<TIM6_DAC_IRQn'
+src/subdir.mk:30: recipe for target 'src/test.o' failed
+make: *** [src/test.o] Error 1
+
+14:45:38 Build Finished (took 340ms)
+

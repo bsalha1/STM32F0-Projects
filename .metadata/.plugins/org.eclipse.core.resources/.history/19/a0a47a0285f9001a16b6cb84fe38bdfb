@@ -1,0 +1,590 @@
+.syntax unified
+.cpu cortex-m0
+.fpu softvfp
+.thumb
+
+//===================================================================
+// ECE 362 Lab Experiment 3
+// General Purpose I/O
+//===================================================================
+
+.equ  RCC,      0x40021000
+.equ  AHBENR,   0x14
+.equ  GPIOCEN,  0x00080000
+.equ  GPIOBEN,  0x00040000
+.equ  GPIOAEN,  0x00020000
+.equ  GPIOC,    0x48000800
+.equ  GPIOB,    0x48000400
+.equ  GPIOA,    0x48000000
+.equ  MODER,    0x00
+.equ  PUPDR,    0x0c
+.equ  IDR,      0x10
+.equ  ODR,      0x14
+.equ  BSRR,     0x18
+.equ  BRR,      0x28
+
+//===========================================================
+// micro_wait: Wait for the number of microseconds specified
+// in argument 1.  Maximum delay is (1<<31)-1 microseconds,
+// or 2147 seconds.
+.global micro_wait
+micro_wait:
+            movs r1, #10    // 1 cycle
+loop:       subs r1, #1     // 1 cycle
+            bne loop        // 3 cycles
+            nop             // 1 cycle
+            nop             // 1 cycle
+            nop             // 1 cycle
+            subs r0, #1     // 1 cycle
+            bne  micro_wait // 3 cycles
+            bx  lr          // 1 cycle
+            // Total delay = r0 * (1 + 10*(1+3) + 1 + 1 + 1 + 1 + 3) + 1
+
+//===========================================================
+// enable_ports: Autotest check 1
+// Enable Ports B and C in the RCC AHBENR
+// No parameters.
+// No expected return value.
+.global enable_ports
+enable_ports:
+    push    {lr}
+    // Student code goes here
+	ldr r0, =RCC
+	ldr r1, [r0, #AHBENR]
+	ldr r2, =0xC0000
+	orrs r1, r2
+
+	str r1, [r0, #AHBENR]
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// port_c_output: Autotest check 2
+// Set bits 0-3 of Port C to be outputs.
+// No parameters.
+// No expected return value.
+.global port_c_output
+port_c_output:
+    push    {lr}
+    // Student code goes here
+	ldr r0, =GPIOC
+    ldr r1, [r0, #MODER]
+
+	movs r2, #0xFF // 11 11 11 11
+	bics r1, r2    // -- 00 00 00 00
+
+    movs r2, #0x55 // 01 01 01 01
+    orrs r1, r2    // -- 01 01 01 01
+
+    str r1, [r0, #MODER]
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// port_b_input: Autotest check 3
+// Set bits 3-4 of Port B to be inputs.
+// No parameters.
+// No expected return value.
+.global port_b_input
+port_b_input:
+    push    {lr}
+    // Student code goes here
+    // clear pin 3 and 4 to 00
+	ldr r0, =GPIOB
+	ldr r1, [r0, #MODER]
+
+	ldr r2, =0xC0  // bits to clear from pin 3
+	ldr r3, =0x300 // bits to clear from pin 4
+	orrs r2, r3    // bits to clear from pin 3 and 4
+
+	bics r1, r2
+	str r1, [r0, #MODER]
+
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// setpin: Autotest check 4
+// Set the state of a single output pin to be high.
+// Do not affect the other bits of the port.
+// Parameter 1 is the GPIOx base address.
+// Praameter 2 is the bit number of the pin.
+// No expected return value.
+.global setpin
+setpin:
+    push    {lr}
+    // Student code goes here
+
+    // Convert bit number to mask
+	movs r2, #1
+	lsls r2, r1
+
+	// Set the corresponding arg1 pin
+	ldr r3, [r0, #ODR]
+	orrs r3, r2
+	str r3, [r0, #ODR]
+
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// clrpin: Autotest check 5
+// Set the state of a single output pin to be low.
+// Do not affect the other bits of the port.
+// Parameter 1 is the GPIOx base address.
+// Parameter 2 is the bit number of the pin.
+// No expected return value.
+.global clrpin
+clrpin:
+    push    {lr}
+    // Student code goes here
+
+    // Convert bit number to mask
+	movs r2, #1
+	lsls r2, r1
+
+	// Clear the corresponding arg1 pin
+	ldr r3, [r0, #ODR]
+	bics r3, r2
+	str r3, [r0, #ODR]
+
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// getpin: Autotest check 6
+// Get the state of the input data register of
+// the specified GPIO.
+// Parameter 1 is GPIOx base address.
+// Parameter 2 is the bit number of pin.
+// The subroutine should return 0x1 if the pin is high
+// or 0x0 if the pin is low.
+.global getpin
+getpin:
+    push    {lr}
+    // Student code goes here
+
+    // Convert bit number to mask
+	movs r2, #1
+	lsls r2, r1
+
+	// And the mask to get 0 if the bit is not set
+	ldr r3, [r0, #IDR]
+	ands r2, r3 // If and is 0, return 0 else return 1
+
+	beq return0
+return1:
+	movs r0, #1
+	b end
+return0:
+	movs r0, #0
+end:
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// seq_leds: Autotest check 7
+// Update the selected illuminated LED by turning off the currently
+// selected LED, incrementing or decrementing 'state' and turning
+// on the newly selected LED.
+// Parameter 1 is the direction of the sequence
+//
+// Performs the following logic
+// 1) clrpin(GPIOC, state)
+// 2) If R0 == 0
+//      (a) Increment state by 1
+//      (b) Check if state > 3
+//      (c) If so set it to 0
+// 3) If R1 != 0
+//      (a) Decrement state by 1
+//      (b) Check if state < 0
+//      (c) If so set it to 3
+// 4) setpin(GPIOC, state)
+// No return value
+.data
+.align 4
+.global state
+state: .word 0
+
+.text
+.global seq_leds
+seq_leds:
+    push    {r4,lr}
+    // Student code goes here
+    movs r3, r0 // dir = r3
+
+    // clrpin(GPIOC, state)
+    ldr r0, =GPIOC
+    ldr r2, =state
+    ldr r1, [r2]
+	bl clrpin
+
+if1:
+	cmp r3, #0
+	bne else1
+then1: // r1 = r1 + 1
+	adds r1, #1
+	str r1, [r2]
+
+if2: // if (state <= 3) endif
+	cmp r1, #3
+	ble endif2
+then2:
+	movs r1, #0
+	str r1, [r2]
+endif2:
+
+	b endif1
+
+else1: // r1 = r1 - 1
+	subs r1, #1
+	str r1, [r2]
+
+if3: // if (state >= 0) endif
+	cmp r1, #0
+	bge endif3
+then3: // r1 = 3
+	movs r1, #3
+	str r1, [r2]
+	bkpt
+endif3:
+endif1:
+	bkpt
+	bl setpin
+
+    // End of student code
+    pop     {r4,pc}
+
+//===========================================================
+// detect_buttons: Autotest check 8
+// Invoke seq_leds(0) when a high signal is detected on
+// PB3 and wait for it to go low again.
+// Invoke seq_leds(1) when a high signal is detected on
+// PB4 and wait for it to go low again.
+// No parameters.
+// No expected return value.
+.global detect_buttons
+detect_buttons:
+    push    {lr}
+    // Student code goes here
+
+// First If
+if4:
+    // getpin(GPIOB, 3)
+	ldr r0, =GPIOB
+	movs r1, #3
+	bl getpin
+
+	cmp r0, #1
+	bne endif4
+then4:
+	// seq_leds(0)
+	movs r0, #0
+	bl seq_leds
+
+while1:
+	// while(getpin(GPIOB, 3) == 1)
+	ldr r0, =GPIOB
+	movs r1, #3
+	bl getpin
+	cmp r0, #1
+	beq while1
+
+endif4:
+
+// Second If
+if5:
+    // getpin(GPIOB, 4)
+	ldr r0, =GPIOB
+	movs r1, #4
+	bl getpin
+
+	cmp r0, #1
+	bne endif5
+then5:
+	// seq_leds(1)
+	movs r0, #1
+	bl seq_leds
+
+while2:
+	// while(getpin(GPIOB, 4) == 1)
+	ldr r0, =GPIOB
+	movs r1, #4
+	bl getpin
+	cmp r0, #1
+	beq while2
+
+endif5:
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// enable_port_a: Autotest check A
+// Enable Port A in the RCC AHBENR
+// No parameters.
+// No expected return value.
+.global enable_port_a
+enable_port_a:
+    push    {lr}
+    // Student code goes here
+	ldr r0, =RCC
+	ldr r1, [r0, #AHBENR]
+	ldr r2, =0x20000
+
+	orrs r1, r2
+	str r1, [r0, #AHBENR]
+
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// port_a_input: Autotest check B
+// Set bit 0 of Port A to be an input and enable its pull-down resistor.
+// No parameters.
+// No expected return value.
+.global port_a_input
+port_a_input:
+    push    {lr}
+    // Student code goes here
+	ldr r0, =GPIOA
+	ldr r1, [r0, #MODER]
+
+	// Set A0 to input
+	movs r2, #3
+	bics r1, r2 // -- -- xx
+	str r1, [r0, #MODER]
+
+	// Activate pull down resistor for A0
+	ldr r1, [r0, #PUPDR]
+	movs r2, #3 // 00 00 11
+	bics r1, r2 // -- -- 00
+
+	movs r2, #2 // 00 00 10
+	orrs r1, r2 // -- -- 10
+	str r1, [r0, #PUPDR]
+
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// port_b_input2: Autotest check C
+// Set bit 2 of Port B to be an input and enable its pull-down resistor.
+// No parameters.
+// No expected return value.
+.global port_b_input2
+port_b_input2:
+    push    {lr}
+    // Student code goes here
+	ldr r0, =GPIOB
+	ldr r1, [r0, #MODER]
+
+	// Set B2 to input
+	movs r2, #0x30
+	bics r1, r2 // xx -- --
+	str r1, [r0, #MODER]
+
+	// Activate pull down resistor for B2
+	ldr r1, [r0, #PUPDR]
+
+	// Clear
+	movs r2, #0x30 // 11 00 00
+	bics r1, r2    // 00 -- --
+
+	// Set
+	movs r2, #0x20 // 10 00 00
+	orrs r1, r2	   // 10 -- --
+	str r1, [r0, #PUPDR]
+
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// port_c_output: Autotest check D
+// Set bits 6-9 of Port C to be outputs.
+// No parameters.
+// No expected return value.
+.global port_c_output2
+port_c_output2:
+    push    {lr}
+
+    // Student code goes here
+	ldr r0, =GPIOC
+    ldr r1, [r0, #MODER]
+
+	ldr r2, =0xFF000 // 11 11 11 11 00 00 00 00 00 00
+	bics r1, r2      // 00 00 00 00 -- -- -- -- -- --
+
+    ldr r2, =0x55000 // 01 01 01 01 00 00 00 00 00 00
+    orrs r1, r2      // 01 01 01 01 -- -- -- -- -- --
+
+    str r1, [r0, #MODER]
+
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// seq_leds2: Autotest check E
+// Update the selected illuminated LED by turning off the currently
+// selected LED, incrementing or decrementing 'state2' and turning
+// on the newly selected LED.
+// Parameter 1 is the direction of the sequence
+//
+// Performs the following logic
+// 1) clrpin(PORTC, state2)
+// 2) If R0 == 0
+//      (a) Increment state2 by 1
+//      (b) Check if state2 > 9
+//      (c) If so set it to 6
+// 3) If R1 != 0
+//      (a) Decrement state2 by 1
+//      (b) Check if state2 < 6
+//      (c) If so set it to 9
+// 4) setpin(PORTC, state2)
+// No return value
+.data
+.align 4
+.global state2
+state2: .word 6
+
+.text
+.global seq_leds2
+seq_leds2:
+    push    {r4,lr}
+
+    // Student code goes here
+    movs r3, r0
+
+    // clrpin(GPIOC, state2)
+    ldr r0, =GPIOC
+    ldr r2, =state2
+    ldr r1, [r2]
+	bl clrpin
+
+if8:
+	cmp r3, #0
+	bne else8
+then8: // r1 = r1 + 1
+	adds r1, #1
+	str r1, [r2]
+
+if9: // if (state <= 9) endif
+	cmp r1, #9
+	ble endif9
+then9:
+	movs r1, #6
+	str r1, [r2]
+endif9:
+	bl endif8
+
+else8: // r1 = r1 - 1
+	subs r1, #1
+	str r1, [r2]
+
+if10: // if (state >= 6) endif
+	cmp r1, #6
+	bge endif10
+then10: // r1 = 9
+	movs r1, #9
+	str r1, [r2]
+endif10:
+endif8:
+
+	bl setpin
+
+    // End of student code
+    pop     {r4,pc}
+
+//===========================================================
+// detect_buttons2: Autotest check F
+// Invoke seq_leds2(0) when a high signal is detected on
+// PA0 and wait for it to go low again.
+// Invoke seq_leds2(1) when a high signal is detected on
+// PB2 and wait for it to go low again.
+// No parameters.
+// No expected return value.
+.global detect_buttons2
+detect_buttons2:
+    push    {lr}
+    // Student code goes here
+
+// First If
+if6:
+    // getpin(GPIOA, 0)
+	ldr r0, =GPIOA
+	movs r1, #0
+	bl getpin
+
+	cmp r0, #1
+	bne endif6
+then6:
+	// seq_leds2(0)
+	movs r0, #0
+	bl seq_leds2
+	bl micro_wait
+
+while6:
+	// while(getpin(GPIOA, 0) == 1)
+	ldr r0, =GPIOA
+	movs r1, #0
+	bl getpin
+	cmp r0, #1
+	beq while6
+	bl micro_wait
+
+endif6:
+
+// Second If
+if7:
+    // getpin(GPIOB, 2)
+	ldr r0, =GPIOB
+	movs r1, #2
+	bl getpin
+
+	cmp r0, #1
+	bne endif7
+then7:
+	// seq_leds(1)
+	movs r0, #1
+	bl seq_leds2
+	bl micro_wait
+while7:
+	// while(getpin(GPIOB, 2) == 1)
+	ldr r0, =GPIOB
+	movs r1, #2
+	bl getpin
+	cmp r0, #1
+	beq while7
+	bl micro_wait
+
+endif7:
+    // End of student code
+    pop     {pc}
+
+//===========================================================
+// The main subroutine calls everything else.
+// It never returns.
+.global login
+login: .string "bsalha" // Change to your login
+.align 2
+.global main
+main:
+	bl   autotest // Uncomment when most things are working
+	bl   enable_ports
+	bl   port_c_output
+	// Turn on LED for PC0
+	ldr  r0,=GPIOC
+	movs r1,#4
+	bl   setpin
+	bl   port_b_input
+	bl   enable_port_a
+	bl   port_a_input
+	bl   port_b_input2
+	bl   port_c_output2
+	// Turn on the LED for PC6
+	ldr  r0,=GPIOC
+	movs r1,#6
+	bl   setpin
+endless_loop:
+	bl   detect_buttons
+	bl   detect_buttons2
+	b    endless_loop

@@ -1,0 +1,41 @@
+.cpu cortex-m0
+.thumb
+.syntax unified
+.fpu softvfp
+
+.text
+.global main
+
+main:
+	b routine
+
+routine:
+	// Load in AH_BENR value to r2
+	ldr r0, =0x40021000
+	movs r1, #0x14
+	ldr r2, [r0, r1]
+
+	// Enable C
+	ldr r3, =0x80000
+	orrs r2, r3
+	str r2, [r0, r1]
+
+	// Load in GPIOC_MODER value to r1
+	ldr r0, =0x48000800
+	ldr r1, [r0]
+
+	// Assert pin 7 of GPIOC_MODER
+	ldr r2, =0xc000
+	orrs r1, r2
+	str r1, [r0]
+
+	// Load in GPIOC_ODR value to r1
+	movs r2, #0x14
+	ldr r1, [r0, r2]
+	movs r3, #0x80
+
+	// Assert bit 7 of GPIOC_ODR
+	orrs r1, r3
+	str r1, [r0, r2]
+
+	bx lr

@@ -1,0 +1,6 @@
+11:32:41 **** Incremental Build of configuration Debug for project practical2 ****
+make -j12 all 
+make: Nothing to be done for 'all'.
+
+11:32:42 Build Finished (took 629ms)
+

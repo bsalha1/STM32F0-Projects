@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;lab11/src/bounce.c&apos; to &apos;main.c&apos;" description="Rename resource &apos;bounce.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="src/bounce.c" name="main.c" stamp="1606441484919" updateReferences="true"/>
+</session>

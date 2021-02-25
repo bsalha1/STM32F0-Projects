@@ -1,0 +1,10 @@
+RemoteSystemsTempFiles/*
+*/.settings/
+*/CMSIS/
+*/Debug/
+*/inc/
+startup/
+*/StdPeriph_Driver/
+*.cproject
+*.project
+*.cfg
